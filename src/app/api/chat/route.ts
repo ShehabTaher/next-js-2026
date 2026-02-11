@@ -1,14 +1,22 @@
+import { streamText, UIMessage, convertToModelMessages } from 'ai'
 import { openai } from '@ai-sdk/openai'
-import { UIMessage, streamText, convertToModelMessages } from 'ai'
 
 export async function POST(req: Request) {
   try {
     const { messages }: { messages: UIMessage[] } = await req.json()
 
     const result = streamText({
-      model: openai('gpt-4.1-nano'),
-      messages: await convertToModelMessages(messages),
+      model: openai('gpt-4.1-mini'),
+      messages: [
+        {
+          role: 'system',
+          content:
+            'You are a helpful coding assistant. Keep responses under 3 sentences and focus on practical examples.',
+        },
+        ...(await convertToModelMessages(messages)),
+      ],
     })
+
     result.usage.then((usage) => {
       console.log({
         messageCount: messages.length,
@@ -20,7 +28,7 @@ export async function POST(req: Request) {
 
     return result.toUIMessageStreamResponse()
   } catch (error) {
-    console.error('Error in chat API', error)
-    return Response.json({ error: 'Failed to stream chat' }, { status: 500 })
+    console.error('Error streaming chat completion:', error)
+    return new Response('Failed to stream chat completion', { status: 500 })
   }
 }
